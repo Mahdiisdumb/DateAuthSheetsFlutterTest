@@ -69,14 +69,13 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       final api = sheets.SheetsApi(client);
-      const spreadsheetId = '1MwBfX4ZgM2Vr4LdT0ovSYBTb5pVkLuSWzfPR90zPK-Q';
-      const authSheet = 'usersDATESAUTH';
+      const usersSpreadsheetId = '1bjUBXMJi2AFAKFIVRoZFfegBHFLzo2Y1zOAoFgXwUv4';
 
       if (isSignup) {
         // Check if username exists
         final existing = await api.spreadsheets.values.get(
-          spreadsheetId,
-          '$authSheet!A:A',
+          usersSpreadsheetId,
+          'A:A',
         );
 
         if (existing.values != null) {
@@ -90,14 +89,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
         // Find next empty row
         final nextRow = (existing.values?.length ?? 0) + 1;
-        final range = '$authSheet!A$nextRow:B$nextRow';
+        final range = 'A$nextRow:B$nextRow';
         final body = sheets.ValueRange(values: [
           [username, password]
         ]);
 
         await api.spreadsheets.values.update(
           body,
-          spreadsheetId,
+          usersSpreadsheetId,
           range,
           valueInputOption: 'RAW',
         );
@@ -107,8 +106,8 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         // Login - check credentials
         final data = await api.spreadsheets.values.get(
-          spreadsheetId,
-          '$authSheet!A:B',
+          usersSpreadsheetId,
+          'A:B',
         );
 
         bool found = false;
@@ -285,13 +284,12 @@ class _MainEventPageState extends State<MainEventPage> {
       );
 
       final api = sheets.SheetsApi(client);
-      const spreadsheetId = '1MwBfX4ZgM2Vr4LdT0ovSYBTb5pVkLuSWzfPR90zPK-Q';
-      const dateSheet = 'DATES';
+      const eventsSpreadsheetId = '1YKEp6w-f4hR_HCWBlHWdKQwQNqNXLi6D-SkUDzwF8XM';
 
       // Find next empty row
       final existing = await api.spreadsheets.values.get(
-        spreadsheetId,
-        '$dateSheet!A:A',
+        eventsSpreadsheetId,
+        'A:A',
       );
       final nextRow = (existing.values?.length ?? 0) + 1;
 
@@ -299,14 +297,14 @@ class _MainEventPageState extends State<MainEventPage> {
       final startStr = startTime!.format(context);
       final endStr = endTime!.format(context);
 
-      final range = '$dateSheet!A$nextRow:E$nextRow';
+      final range = 'A$nextRow:E$nextRow';
       final body = sheets.ValueRange(values: [
         [widget.username, eventName, startStr, endStr, dateStr]
       ]);
 
       await api.spreadsheets.values.update(
         body,
-        spreadsheetId,
+        eventsSpreadsheetId,
         range,
         valueInputOption: 'RAW',
       );
@@ -463,12 +461,11 @@ class _EventViewerPageState extends State<EventViewerPage> {
       );
 
       final api = sheets.SheetsApi(client);
-      const spreadsheetId = '1YKEp6w-f4hR_HCWBlHWdKQwQNqNXLi6D-SkUDzwF8XM';
-      const dateSheet = '1bjUBXMJi2AFAKFIVRoZFfegBHFLzo2Y1zOAoFgXwUv4';
+      const eventsSpreadsheetId = '1YKEp6w-f4hR_HCWBlHWdKQwQNqNXLi6D-SkUDzwF8XM';
 
       final data = await api.spreadsheets.values.get(
-        spreadsheetId,
-        '$dateSheet!A:E',
+        eventsSpreadsheetId,
+        'A:E',
       );
 
       final userEvents = <Map<String, String>>[];
