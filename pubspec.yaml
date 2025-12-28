@@ -1,0 +1,25 @@
+name: dateauthsheetsfluttertest
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  googleapis: ^14.0.0
+  googleapis_auth: ^1.4.0
+  device_info_plus: ^10.1.0
+  intl: ^0.18.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/credential.json
