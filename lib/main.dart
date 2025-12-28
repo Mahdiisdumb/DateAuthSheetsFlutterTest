@@ -7,6 +7,9 @@ import 'package:intl/intl.dart';
 import 'package:googleapis/sheets/v4.dart' as sheets;
 import 'package:googleapis_auth/auth_io.dart' as auth;
 
+// Single spreadsheet ID for all data
+const String mainSpreadsheetId = '1lbyjJoNYydylvhVbn4vKzAbMG85eX7q-oaaj4hIa3QM';
+
 void main() {
   runApp(const MyApp());
 }
@@ -37,6 +40,29 @@ class _LoginScreenState extends State<LoginScreen> {
   bool busy = false;
   bool isSignup = false;
 
+  Future<void> ensureSheetExists(sheets.SheetsApi api, String sheetName) async {
+    try {
+      final spreadsheet = await api.spreadsheets.get(mainSpreadsheetId);
+      final sheetsList = spreadsheet.sheets ?? [];
+      final sheetExists = sheetsList.any((s) => s.properties?.title == sheetName);
+      
+      if (!sheetExists) {
+        await api.spreadsheets.batchUpdate(
+          sheets.BatchUpdateSpreadsheetRequest(requests: [
+            sheets.Request(
+              addSheet: sheets.AddSheetRequest(
+                properties: sheets.SheetProperties(title: sheetName),
+              ),
+            ),
+          ]),
+          mainSpreadsheetId,
+        );
+      }
+    } catch (e) {
+      throw Exception('Could not verify/create sheet $sheetName: $e');
+    }
+  }
+
   Future<void> handleAuth() async {
     if (kIsWeb) {
       _snack('Service accounts do not work on Web.', error: true);
@@ -64,12 +90,14 @@ class _LoginScreenState extends State<LoginScreen> {
       ]);
 
       final api = sheets.SheetsApi(client);
-      const usersSpreadsheetId = '1bjUBXMJi2AFAKFIVRoZFfegBHFLzo2Y1zOAoFgXwUv4';
+      
+      // Ensure USERS sheet exists
+      await ensureSheetExists(api, 'USERS');
 
       if (isSignup) {
         final existing = await api.spreadsheets.values.get(
-          usersSpreadsheetId,
-          'A:A',
+          mainSpreadsheetId,
+          'USERS!A:A',
         );
 
         if (existing.values != null) {
@@ -81,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
           }
         }
         final nextRow = (existing.values?.length ?? 0) + 1;
-        final range = 'A$nextRow:B$nextRow';
+        final range = 'USERS!A$nextRow:B$nextRow';
         final body = sheets.ValueRange(
           values: [
             [username, password],
@@ -89,7 +117,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
         await api.spreadsheets.values.update(
           body,
-          usersSpreadsheetId,
+          mainSpreadsheetId,
           range,
           valueInputOption: 'RAW',
         );
@@ -97,8 +125,8 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => isSignup = false);
       } else {
         final data = await api.spreadsheets.values.get(
-          usersSpreadsheetId,
-          'A:B',
+          mainSpreadsheetId,
+          'USERS!A:B',
         );
         bool found = false;
         if (data.values != null) {
@@ -214,14 +242,37 @@ class ForgotPasswordPage extends StatefulWidget {
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final usernameCtrl = TextEditingController();
-  final newPasswordCtrl = TextEditingController();
+  final emailCtrl = TextEditingController();
   bool busy = false;
+
+  Future<void> ensureSheetExists(sheets.SheetsApi api, String sheetName) async {
+    try {
+      final spreadsheet = await api.spreadsheets.get(mainSpreadsheetId);
+      final sheetsList = spreadsheet.sheets ?? [];
+      final sheetExists = sheetsList.any((s) => s.properties?.title == sheetName);
+      
+      if (!sheetExists) {
+        await api.spreadsheets.batchUpdate(
+          sheets.BatchUpdateSpreadsheetRequest(requests: [
+            sheets.Request(
+              addSheet: sheets.AddSheetRequest(
+                properties: sheets.SheetProperties(title: sheetName),
+              ),
+            ),
+          ]),
+          mainSpreadsheetId,
+        );
+      }
+    } catch (e) {
+      throw Exception('Could not verify/create sheet $sheetName: $e');
+    }
+  }
 
   Future<void> handleReset() async {
     final username = usernameCtrl.text.trim();
-    final newPassword = newPasswordCtrl.text.trim();
-    if (username.isEmpty || newPassword.isEmpty) {
-      _snack('Please enter username and new password', error: true);
+    final email = emailCtrl.text.trim();
+    if (username.isEmpty || email.isEmpty) {
+      _snack('Please enter username and email', error: true);
       return;
     }
     setState(() => busy = true);
@@ -236,39 +287,28 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       ]);
 
       final api = sheets.SheetsApi(client);
-      const usersSpreadsheetId = '1bjUBXMJi2AFAKFIVRoZFfegBHFLzo2Y1zOAoFgXwUv4';
+      
+      // Ensure USERRESET sheet exists
+      await ensureSheetExists(api, 'USERRESET');
 
-      final data = await api.spreadsheets.values.get(usersSpreadsheetId, 'A:B');
-      if (data.values != null) {
-        for (var i = 0; i < data.values!.length; i++) {
-          final row = data.values![i];
-          if (row.isNotEmpty && row[0].toString() == username) {
-            final rowIndex = i + 1;
-            final range = 'B$rowIndex:B$rowIndex';
-            final body = sheets.ValueRange(
-              values: [
-                [newPassword],
-              ],
-            );
-            await api.spreadsheets.values.update(
-              body,
-              usersSpreadsheetId,
-              range,
-              valueInputOption: 'RAW',
-            );
+      final body = sheets.ValueRange(values: [
+        [username, email, DateTime.now().toIso8601String(), 'requested'],
+      ]);
 
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Password reset successfully')),
-              );
-              Navigator.pop(context);
-            }
-            return;
-          }
-        }
+      await api.spreadsheets.values.append(
+        body,
+        mainSpreadsheetId,
+        'USERRESET!A:D',
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Password reset request submitted. You will receive an email with your new password.')),
+        );
+        Navigator.pop(context);
       }
-
-      _snack('Username not found', error: true);
     } catch (e) {
       _snack('Error: $e', error: true);
     } finally {
@@ -301,12 +341,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             ),
             const SizedBox(height: 16),
             TextField(
-              controller: newPasswordCtrl,
+              controller: emailCtrl,
               decoration: const InputDecoration(
-                labelText: 'New Password',
+                labelText: 'Email',
                 border: OutlineInputBorder(),
               ),
-              obscureText: true,
+              keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 24),
             ElevatedButton(
@@ -316,7 +356,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               ),
               child: busy
                   ? const CircularProgressIndicator()
-                  : const Text('Reset Password'),
+                  : const Text('Request Reset'),
             ),
           ],
         ),
@@ -339,6 +379,29 @@ class _MainEventPageState extends State<MainEventPage> {
   TimeOfDay? startTime;
   TimeOfDay? endTime;
   bool busy = false;
+
+  Future<void> ensureSheetExists(sheets.SheetsApi api, String sheetName) async {
+    try {
+      final spreadsheet = await api.spreadsheets.get(mainSpreadsheetId);
+      final sheetsList = spreadsheet.sheets ?? [];
+      final sheetExists = sheetsList.any((s) => s.properties?.title == sheetName);
+      
+      if (!sheetExists) {
+        await api.spreadsheets.batchUpdate(
+          sheets.BatchUpdateSpreadsheetRequest(requests: [
+            sheets.Request(
+              addSheet: sheets.AddSheetRequest(
+                properties: sheets.SheetProperties(title: sheetName),
+              ),
+            ),
+          ]),
+          mainSpreadsheetId,
+        );
+      }
+    } catch (e) {
+      throw Exception('Could not verify/create sheet $sheetName: $e');
+    }
+  }
 
   Future<void> pickDate() async {
     final date = await showDatePicker(
@@ -400,11 +463,13 @@ class _MainEventPageState extends State<MainEventPage> {
       ]);
 
       final api = sheets.SheetsApi(client);
-      const eventsSpreadsheetId =
-          '1YKEp6w-f4hR_HCWBlHWdKQwQNqNXLi6D-SkUDzwF8XM';
+      
+      // Ensure EVENTS sheet exists
+      await ensureSheetExists(api, 'EVENTS');
+      
       final existing = await api.spreadsheets.values.get(
-        eventsSpreadsheetId,
-        'A:A',
+        mainSpreadsheetId,
+        'EVENTS!A:A',
       );
       final nextRow = (existing.values?.length ?? 0) + 1;
 
@@ -412,7 +477,7 @@ class _MainEventPageState extends State<MainEventPage> {
       final startStr = startTime!.format(context);
       final endStr = endTime!.format(context);
 
-      final range = 'A$nextRow:E$nextRow';
+      final range = 'EVENTS!A$nextRow:E$nextRow';
       final body = sheets.ValueRange(
         values: [
           [widget.username, eventName, startStr, endStr, dateStr],
@@ -421,7 +486,7 @@ class _MainEventPageState extends State<MainEventPage> {
 
       await api.spreadsheets.values.update(
         body,
-        eventsSpreadsheetId,
+        mainSpreadsheetId,
         range,
         valueInputOption: 'RAW',
       );
@@ -579,12 +644,10 @@ class _EventViewerPageState extends State<EventViewerPage> {
       ]);
 
       final api = sheets.SheetsApi(client);
-      const eventsSpreadsheetId =
-          '1YKEp6w-f4hR_HCWBlHWdKQwQNqNXLi6D-SkUDzwF8XM';
 
       final data = await api.spreadsheets.values.get(
-        eventsSpreadsheetId,
-        'A:E',
+        mainSpreadsheetId,
+        'EVENTS!A:E',
       );
 
       final userEvents = <Map<String, String>>[];
