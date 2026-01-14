@@ -655,7 +655,7 @@ class _EventViewerPageState extends State<EventViewerPage> {
         for (var row in data.values!) {
           if (row.isNotEmpty && row[0].toString() == widget.username) {
             userEvents.add({
-              'uploader': row.length > 0 ? row[0].toString() : '',
+              'uploader': row.isNotEmpty ? row[0].toString() : '',
               'eventName': row.length > 1 ? row[1].toString() : '',
               'startTime': row.length > 2 ? row[2].toString() : '',
               'endTime': row.length > 3 ? row[3].toString() : '',
