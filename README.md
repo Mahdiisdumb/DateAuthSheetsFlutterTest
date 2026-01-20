@@ -1,23 +1,22 @@
 # DateAuthSheetsFlutterTest
 
-A **Flutter test project** exploring date pickers and authentication sheet UI components.
+A **Flutter app using Google Sheets as a backend** to log and display dates — essentially a **calendar with authentication/data storage**.
 
-This repository is a sandbox for playing with:
-- Flutter date selection widgets
-- Authentication / modal sheets
-- UI layouts and flows
-- Input validation and state handling
+Instead of a traditional database, this project stores events or date entries in a Google Sheet, letting you read and write entries directly from Flutter.
 
-It’s meant as a practical experiment for learning and prototyping UI patterns — not a full app.
+## Features
 
-## What This Is
+- Date picker / calendar UI in Flutter  
+- Authenticate or identify users (optional)  
+- Store selected dates and associated data in a Google Sheet  
+- Real-time updates: read/write entries from the sheet  
+- Works on mobile, web, or desktop (Flutter-supported platforms)  
 
-This project shows how to:
-- Show a date picker
-- Handle auth/login sheets
-- Combine interactive widgets with stateful UI
+## How It Works
 
-It’s ideal as:
-- A reference for Flutter UI patterns
-- A starting point for real apps
-- A way to test behavior on multiple platforms****
+- The app presents a **calendar or date picker UI**  
+- Users select a date or range  
+- Selected dates are sent to a Google Sheet via API or public access  
+- Flutter reads the sheet and displays all logged dates  
+
+Think of it as a lightweight, sheet-based scheduling system built in Flutter.
